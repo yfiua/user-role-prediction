@@ -1,7 +1,8 @@
+% version 2.5
 @all: @traditional @transductive;
 
-@traditional: [dep.traditional] @dataset;
-@transductive: [dep.experiments] @dataset;
+@traditional: [dep.traditional];
+@transductive: [dep.experiments];
 
 >TASKS { echo admin bot }
 >FUNCS { echo none degree pagerank lcc }
@@ -27,18 +28,18 @@ res/:
     mkdir -p res
 }
 
-res/admin-transductive-$FUNC.csv: classifier.py transform_funcs.py !res/
+res/admin-transductive-$FUNC.csv: classifier.py transform_funcs.py -p res/ @dataset
 {
     python classifier.py $FUNC
 }
 
-res/$TASK-traditional.csv: !res/admin-transductive-none.csv {}
-res/$TASK-transductive-$FUNC.csv: !res/admin-transductive-$FUNC.csv {}
+res/$TASK-traditional.csv: -p res/admin-transductive-none.csv {}
+res/$TASK-transductive-$FUNC.csv: -p res/admin-transductive-$FUNC.csv {}
 
 
 @meta: res/meta-info.csv;
 
->res/meta-info.csv: !res/ meta-info.py @dataset
+>res/meta-info.csv: -p res/ meta-info.py @dataset
 {
     python meta-info.py
 }
@@ -101,17 +102,17 @@ plots/:
     mkdir -p plots
 }
 
-plots/heatmap-$TASK-$FUNC-$SORTBY.eps: plot-heatmap.py !plots/
+plots/heatmap-$TASK-$FUNC-$SORTBY.eps: plot-heatmap.py -p plots/
 {
     python plot-heatmap.py $TASK $FUNC $SORTBY
 }
 
-plots/boxplot-$TASK.eps: plot-boxplot.py !plots/
+plots/boxplot-$TASK.eps: plot-boxplot.py -p plots/
 {
     python plot-boxplot.py $TASK
 }
 
-plots/degree-$ANY.eps: plot-degree.py !plots/
+plots/degree-$ANY.eps: plot-degree.py -p plots/
 {
     python plot-degree.py
 }
@@ -157,8 +158,8 @@ data/: wiki-talk-dataset.tar.gz
     touch -c data/*
 }
 
-data/$LANG-wiki-talk: !data/ {}
-data/$LANG-user-group: !data/ {}
+data/$LANG-wiki-talk: -p data/ {}
+data/$LANG-user-group: -p data/ {}
 
 @clean:
 {

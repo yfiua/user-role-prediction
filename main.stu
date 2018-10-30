@@ -1,0 +1,167 @@
+@all: @traditional @transductive;
+
+@traditional: [dep.traditional] @dataset;
+@transductive: [dep.experiments] @dataset;
+
+>TASKS { echo admin bot }
+>FUNCS { echo none degree pagerank lcc }
+
+>dep.traditional: TASKS
+{
+    for TASK in $(cat TASKS) ; do
+        echo "res/$TASK-traditional.csv"
+    done
+}
+
+>dep.experiments: TASKS FUNCS
+{
+    for TASK in $(cat TASKS) ; do
+        for FUNC in $(cat FUNCS) ; do
+            echo "res/$TASK-transductive-$FUNC.csv"
+        done
+    done
+}
+
+res/:
+{
+    mkdir -p res
+}
+
+res/admin-transductive-$FUNC.csv: classifier.py transform_funcs.py !res/
+{
+    python classifier.py $FUNC
+}
+
+res/$TASK-traditional.csv: !res/admin-transductive-none.csv {}
+res/$TASK-transductive-$FUNC.csv: !res/admin-transductive-$FUNC.csv {}
+
+
+@meta: res/meta-info.csv;
+
+>res/meta-info.csv: !res/ meta-info.py @dataset
+{
+    python meta-info.py
+}
+
+# evaluation of feature aggregation
+@feature: res/eval-feature-aggr.npy;
+
+res/eval-feature-aggr.npy: feature-aggr.py
+{
+    python feature-aggr.py
+}
+
+@plot: [dep.heatmaps] [dep.boxplots] [dep.degrees] [dep.features] [dep.applications];
+
+>SORTBYS: { echo n m global_clusco avg_degree assortativity }
+>FEATURES: { echo degree clustering_coefficient pagerank }
+
+>dep.heatmaps: TASKS FUNCS SORTBYS
+{
+    for TASK in $(cat TASKS) ; do
+        for FUNC in $(cat FUNCS) ; do
+            for SORTBY in $(cat SORTBYS) ; do
+                echo "plots/heatmap-$TASK-$FUNC-$SORTBY.eps"
+            done
+        done
+    done
+}
+
+>dep.boxplots: TASKS
+{
+    for TASK in $(cat TASKS) ; do
+        echo "plots/boxplot-$TASK.eps"
+    done
+}
+
+>dep.degrees:
+{
+    echo "plots/degree-original.eps"
+    echo "plots/degree-transformed.eps"
+}
+
+>dep.features: FEATURES
+{
+    for FEATURE in $(cat FEATURES) ; do
+        echo "plots/feature-$FEATURE.eps"
+    done
+}
+
+>ROLES: { echo administrator moderator subscriber banned positive }
+
+>dep.applications: ROLES
+{
+    for ROLE in $(cat ROLES) ; do
+        echo "plots/application-$ROLE.eps"
+    done
+}
+
+plots/:
+{
+    mkdir -p plots
+}
+
+plots/heatmap-$TASK-$FUNC-$SORTBY.eps: plot-heatmap.py !plots/
+{
+    python plot-heatmap.py $TASK $FUNC $SORTBY
+}
+
+plots/boxplot-$TASK.eps: plot-boxplot.py !plots/
+{
+    python plot-boxplot.py $TASK
+}
+
+plots/degree-$ANY.eps: plot-degree.py !plots/
+{
+    python plot-degree.py
+}
+
+plots/feature-$FEATURE.eps: plot-feature.py
+{
+    python plot-feature.py
+}
+
+plots/application-$ROLE.eps: plot-application.py
+{
+    python plot-application.py
+}
+
+@dataset: [dep.networks] [dep.user-groups];
+
+LANGS = { ar bn br ca cy de el en eo es eu fr gl ht it ja lv nds nl oc pl pt ru sk sr sv vi zh }
+
+>dep.networks: LANGS
+{
+    for LANG in $(cat LANGS); do
+        echo "data/$LANG-wiki-talk"
+    done
+}
+
+>dep.user-groups: LANGS
+{
+    for LANG in $(cat LANGS); do
+        echo "data/$LANG-user-group"
+    done
+}
+
+wiki-talk-dataset.tar.gz:
+{
+    wget https://zenodo.org/record/49561/files/wiki-talk-dataset.tar.gz -O wiki-talk-dataset.tar.gz
+    touch -c wiki-talk-dataset.tar.gz
+}
+
+data/: wiki-talk-dataset.tar.gz
+{
+    tar -xvf wiki-talk-dataset.tar.gz
+    touch -c data/
+    touch -c data/*
+}
+
+data/$LANG-wiki-talk: !data/ {}
+data/$LANG-user-group: !data/ {}
+
+@clean:
+{
+    rm -f dep.* TASKS FUNCS LANGS SORTBYS
+    rm -rf res/ plots/
+}
